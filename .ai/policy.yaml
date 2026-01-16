@@ -1,0 +1,34 @@
+# Neona Control Plane Policy
+# Single source of truth for task execution and agent behavior
+
+task_execution:
+  # Task claiming is mandatory before execution
+  claim_required: true
+  # All changes must go through PR/diff review
+  direct_main_write: false
+  # Only claimed tasks may be worked on
+  autonomous_task_creation: false
+
+safety:
+  # No access to secrets, credentials, or sensitive data
+  secrets_access: false
+  # No speculative changes outside task scope
+  speculative_changes: false
+  # Minimize diff size; avoid unrelated refactors
+  minimal_diff: true
+
+completion:
+  # Evidence required for task completion
+  evidence_required: true
+  # Tests/logs must be provided
+  test_evidence: true
+  # Code diff must be shown
+  diff_required: true
+
+agents:
+  # Agents must respect file/module locks
+  respect_locks: true
+  # Agents must not bypass tests or CI
+  bypass_tests: false
+  # Agents must follow policy constraints
+  enforce_policy: true
