@@ -86,6 +86,7 @@ type App struct {
 	agents       []agents.Agent
 	agentIdx     int
 	daemonOnline bool
+	suggestions  *Suggestions
 }
 
 var filters = []string{"", "pending", "claimed", "running", "completed", "failed"}
@@ -106,11 +107,12 @@ func New(apiAddr string) *App {
 	detectedAgents := detector.Scan()
 
 	return &App{
-		client:   NewClient(apiAddr),
-		input:    ti,
-		viewport: vp,
-		mode:     "list",
-		agents:   detectedAgents,
+		client:      NewClient(apiAddr),
+		input:       ti,
+		viewport:    vp,
+		mode:        "list",
+		agents:      detectedAgents,
+		suggestions: NewSuggestions(),
 	}
 }
 
