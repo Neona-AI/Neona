@@ -226,10 +226,12 @@ func (sch *Scheduler) GetStats() map[string]interface{} {
 		connectorCounts[k] = v
 	}
 
-	// Copy workers list
+	// Copy workers list to prevent data races.
+	// The caller will encode this to JSON after the lock is released.
 	workers := make([]*WorkerInfo, 0, len(sch.workers))
 	for _, w := range sch.workers {
-		workers = append(workers, w)
+		wCopy := *w // Create a copy of the struct
+		workers = append(workers, &wCopy)
 	}
 
 	return map[string]interface{}{
