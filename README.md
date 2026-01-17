@@ -4,21 +4,27 @@ A CLI-centric AI Control Plane that coordinates multiple AI tools (Cursor, AntiG
 
 ## Quick Start
 
+### Installation
+
 ```bash
-# Install dependencies
-go mod tidy
+# Install Neona via one-line script
+curl -fsSL https://raw.githubusercontent.com/fentz26/Neona/master/scripts/install.sh | bash
+```
 
+Once installed, just run:
+
+```bash
+neona
+```
+
+### Manual Run
+
+```bash
 # Start the daemon
-go run ./cmd/neona daemon
+neona daemon
 
-# In another terminal - create and manage tasks
-go run ./cmd/neona task add --title "My Task" --desc "Task description"
-go run ./cmd/neona task list
-go run ./cmd/neona task claim <task-id>
-go run ./cmd/neona task run <task-id> --cmd "git status"
-
-# Or use the TUI
-go run ./cmd/neona tui
+# In another terminal, launch TUI
+neona
 ```
 
 ## Architecture
