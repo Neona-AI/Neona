@@ -11,9 +11,9 @@ var rootCmd = &cobra.Command{
 	Use:   "neona",
 	Short: "Neona - AI Control Plane CLI",
 	Long:  `Neona is a CLI-centric AI Control Plane that coordinates multiple AI tools under shared rules, knowledge, and policy.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// Default to running TUI
-		tuiCmd.Run(cmd, args)
+		return runTUI(cmd, args)
 	},
 }
 

@@ -11,21 +11,17 @@ A CLI-centric AI Control Plane that coordinates multiple AI tools (Cursor, AntiG
 curl -fsSL https://neona.app/install.sh | bash
 ```
 
-Once installed, just run:
+### Usage
+
+Navigate to your project folder and run:
 
 ```bash
 neona
 ```
 
-### Manual Run
+That's it! Neona's TUI will launch, automatically starting the background daemon if needed.
 
-```bash
-# Start the daemon
-neona daemon
-
-# In another terminal, launch TUI
-neona
-```
+> **Note:** Neona requires `go` to be installed on your system.
 
 ## Architecture
 
