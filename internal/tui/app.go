@@ -221,7 +221,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "w":
 			// Quick switch to workers view
 			a.mode = "workers"
-			return a, a.fetchWorkers()
+			return a, tea.Batch(a.fetchWorkers(), a.tickCmd())
 		}
 
 	case tea.WindowSizeMsg:

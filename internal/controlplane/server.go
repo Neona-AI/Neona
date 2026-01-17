@@ -39,6 +39,7 @@ func NewServer(service *Service, s *store.Store, addr string) *Server {
 }
 
 // SetScheduler sets the scheduler stats provider for the /workers endpoint.
+// Must be called before Start() - not safe for concurrent use.
 func (s *Server) SetScheduler(sched SchedulerStatsProvider) {
 	s.scheduler = sched
 }
