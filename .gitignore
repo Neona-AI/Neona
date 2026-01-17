@@ -54,3 +54,5 @@ internal/audit/traces/
 .env.local
 *.env
 
+# DO NOT COMMIT folder (reference repositories)
+..DO NOT COMMIT/
