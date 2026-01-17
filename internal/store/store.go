@@ -33,6 +33,20 @@ func New(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 
+	// Enable WAL mode for better concurrency
+	_, err = db.Exec("PRAGMA journal_mode=WAL")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("enable WAL: %w", err)
+	}
+	
+	// Set busy timeout for concurrent access
+	_, err = db.Exec("PRAGMA busy_timeout=5000")
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("set busy timeout: %w", err)
+	}
+
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
 		db.Close()
@@ -234,6 +248,83 @@ func (s *Store) ReleaseTask(id string) error {
 		models.TaskStatusPending, now, id,
 	)
 	return err
+}
+
+// AtomicClaimTask atomically claims a pending task and creates a lease.
+// Returns the task and lease if successful, or nil if the task is already claimed.
+func (s *Store) AtomicClaimTask(holderID string, ttlSec int) (*models.Task, *models.Lease, error) {
+	now := time.Now().UTC()
+	
+	// Start transaction for atomic claim
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, nil, fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+	
+	// Find and lock a pending task
+	var taskID, title, description string
+	var createdAt, updatedAt time.Time
+	err = tx.QueryRow(
+		`SELECT id, title, description, created_at, updated_at FROM tasks 
+		 WHERE status = ? AND claimed_by IS NULL 
+		 ORDER BY created_at ASC LIMIT 1`,
+		models.TaskStatusPending,
+	).Scan(&taskID, &title, &description, &createdAt, &updatedAt)
+	
+	if err == sql.ErrNoRows {
+		return nil, nil, nil // No pending tasks
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("query pending task: %w", err)
+	}
+	
+	// Claim the task
+	_, err = tx.Exec(
+		`UPDATE tasks SET status = ?, claimed_by = ?, claimed_at = ?, updated_at = ? WHERE id = ? AND status = ?`,
+		models.TaskStatusClaimed, holderID, now, now, taskID, models.TaskStatusPending,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("claim task: %w", err)
+	}
+	
+	// Create lease
+	leaseID := uuid.New().String()
+	expiresAt := now.Add(time.Duration(ttlSec) * time.Second)
+	_, err = tx.Exec(
+		`INSERT INTO leases (id, task_id, holder_id, ttl_sec, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		leaseID, taskID, holderID, ttlSec, expiresAt, now,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create lease: %w", err)
+	}
+	
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return nil, nil, fmt.Errorf("commit transaction: %w", err)
+	}
+	
+	task := &models.Task{
+		ID:          taskID,
+		Title:       title,
+		Description: description,
+		Status:      models.TaskStatusClaimed,
+		CreatedAt:   createdAt,
+		UpdatedAt:   now,
+		ClaimedBy:   holderID,
+		ClaimedAt:   &now,
+	}
+	
+	lease := &models.Lease{
+		ID:        leaseID,
+		TaskID:    taskID,
+		HolderID:  holderID,
+		TTLSec:    ttlSec,
+		ExpiresAt: expiresAt,
+		CreatedAt: now,
+	}
+	
+	return task, lease, nil
 }
 
 // --- Lease Operations ---

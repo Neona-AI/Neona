@@ -10,6 +10,7 @@ import (
 	"github.com/fentz26/neona/internal/audit"
 	"github.com/fentz26/neona/internal/connectors/localexec"
 	"github.com/fentz26/neona/internal/controlplane"
+	"github.com/fentz26/neona/internal/scheduler"
 	"github.com/fentz26/neona/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -52,16 +53,29 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 	// Create service and server
 	service := controlplane.NewService(s, pdr, connector)
 	server := controlplane.NewServer(service, listenAddr)
+	
+	// Create and start scheduler
+	schedulerCfg := scheduler.DefaultConfig()
+	sched := scheduler.New(s, pdr, connector, schedulerCfg)
+	sched.Start()
+	defer sched.Stop()
 
 	// Handle graceful shutdown
+	shutdownCh := make(chan os.Signal, 1)
+	signal.Notify(shutdownCh, syscall.SIGINT, syscall.SIGTERM)
+	
+	// Start server in a goroutine
+	serverErr := make(chan error, 1)
 	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-		log.Println("Shutting down...")
-		os.Exit(0)
+		serverErr <- server.Start()
 	}()
-
-	// Start server
-	return server.Start()
+	
+	// Wait for shutdown signal or server error
+	select {
+	case <-shutdownCh:
+		log.Println("Shutting down...")
+		return nil
+	case err := <-serverErr:
+		return err
+	}
 }
