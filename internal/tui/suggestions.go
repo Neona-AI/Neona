@@ -64,19 +64,23 @@ func (s *Suggestions) Update(input string) {
 	firstChar := string(input[0])
 	if firstChar == "/" {
 		s.prefix = "/"
-		s.items = commandSuggestions
+		s.items = commandSuggestions // Reset to commands
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "/"))
 		s.filter(query)
 	} else if firstChar == "@" {
 		s.prefix = "@"
-		// Will be populated with agents dynamically
+		// For @, start with empty list until agents/tasks are populated
+		// Do NOT reuse previous s.items if it was commands
+		if len(s.items) > 0 && s.items[0].Type == "command" {
+			s.items = []SuggestionItem{}
+		}
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "@"))
 		s.filter(query)
 	} else if firstChar == "!" {
 		s.prefix = "!"
-		s.items = actionSuggestions
+		s.items = actionSuggestions // Reset to actions
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "!"))
 		s.filter(query)

@@ -259,6 +259,21 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update suggestions based on input
 	a.suggestions.Update(a.input.Value())
 
+	// Populate dynamic suggestions for @
+	if strings.HasPrefix(a.input.Value(), "@") {
+		var agentNames []string
+		for _, ag := range a.agents {
+			agentNames = append(agentNames, ag.Name)
+		}
+		a.suggestions.SetAgents(agentNames)
+
+		var taskIDs []string
+		for _, t := range a.tasks {
+			taskIDs = append(taskIDs, t.ID)
+		}
+		a.suggestions.SetTasks(taskIDs)
+	}
+
 	return a, tea.Batch(cmds...)
 }
 
