@@ -2,11 +2,21 @@
 
 ## Overview
 
-Neona provides a **full TUI (Terminal User Interface)** similar to OpenCode, Letta-Code, and Claude CLI. Users interact primarily through an interactive terminal interface where they can:
+Neona provides a **full TUI (Terminal User Interface)** inspired by **OpenCode's incredible design**. The TUI architecture is primarily based on OpenCode's patterns and component structure, adapted for Go/Bubble Tea.
+
+Users interact primarily through an interactive terminal interface where they can:
 - Chat with AI to create rules, tasks, and policies
 - Route requests to custom AI APIs (like 9router)
 - Manage workflows through conversational interface
 - View and edit configurations interactively
+
+**Design Philosophy (from OpenCode)**:
+- Terminal-native rendering with proper color detection
+- Dialog-based UI with modal overlays
+- Provider/context pattern for state management
+- Component-based architecture with reusable primitives
+- Keyboard-driven interaction with comprehensive keybindings
+- Theme-aware with automatic terminal background detection
 
 ## Primary Interface: TUI Mode
 
@@ -25,7 +35,19 @@ neona --provider claude-001
 
 ### TUI Components
 
-**Pattern**: Inspired by OpenCode and Letta-Code TUI implementations.
+**Pattern**: Primarily inspired by OpenCode's TUI architecture (`@opentui/solid`).
+
+**Key Design Elements from OpenCode**:
+- **Terminal Color Detection**: Automatic detection of terminal background (dark/light) using OSC escape sequences
+- **Dialog System**: Stack-based dialog management with overlay and backdrop
+- **Provider Pattern**: Context-based state management (SDK, Sync, Theme, Local, KV, etc.)
+- **Component Architecture**: Box-based layout system with renderables (BoxRenderable, TextareaRenderable, ScrollBoxRenderable)
+- **Keyboard Handling**: Comprehensive keybinding system with keyboard event propagation
+- **Theme System**: Theme-aware rendering with syntax highlighting and color palettes
+- **Command Dialog**: Global command palette accessible via keyboard shortcuts
+- **Toast Notifications**: Non-intrusive toast system for user feedback
+- **Clipboard Integration**: Terminal-native clipboard support
+- **Prompt Component**: Advanced prompt input with autocomplete, history, and stash support
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -822,22 +844,43 @@ global:
 
 ### TUI Framework (Go)
 
-**Recommended**: Use `github.com/charmbracelet/bubbletea` (inspired by Letta-Code's React TUI)
+**Recommended**: Use `github.com/charmbracelet/bubbletea` with design patterns adapted from OpenCode's `@opentui/solid`.
+
+**OpenCode's Architecture (adapted for Go)**:
+- **Terminal Detection**: Detect terminal background color using OSC escape sequences (like OpenCode)
+- **Provider Pattern**: Context-based state management (similar to OpenCode's Provider pattern)
+- **Dialog Stack**: Stack-based dialog system with overlays and backdrops
+- **Component Model**: Box-based layout system (similar to OpenCode's BoxRenderable)
+- **Keyboard Events**: Comprehensive keyboard handling with keybinding registration
+- **Theme System**: Theme-aware rendering with terminal color adaptation
+- **Render System**: Efficient rendering with dirty marking and incremental updates
 
 ```go
-// TUI application structure
+// TUI application structure (inspired by OpenCode)
 type NeonaTUI struct {
     model *Model
     tea   *tea.Program
 }
 
 type Model struct {
+    // Route/State (like OpenCode's RouteProvider)
+    route     string  // "home", "session", etc.
+    routeData map[string]interface{}
+    
     // Conversation state
     messages []Message
     
-    // UI state
-    activePanel string  // "chat", "tasks", "policies"
-    sidebarOpen bool
+    // UI state (like OpenCode's component state)
+    activePanel  string  // "chat", "tasks", "policies"
+    sidebarOpen  bool
+    dialogStack  []Dialog // Stack-based dialog management
+    
+    // Providers (like OpenCode's Provider pattern)
+    sdkProvider  *SDKProvider
+    syncProvider *SyncProvider
+    themeProvider *ThemeProvider
+    localProvider *LocalProvider
+    kvProvider   *KVProvider
     
     // AI provider
     provider Provider
@@ -845,54 +888,80 @@ type Model struct {
     // Task/policy managers
     taskManager   *TaskManager
     policyManager *PolicyManager
+    
+    // Terminal state
+    terminalColors TerminalColors
+    terminalMode   string // "dark" | "light"
+}
+
+// Terminal color detection (from OpenCode)
+type TerminalColors struct {
+    Background string
+    Foreground string
+    Cursor     string
+    Selection  string
 }
 ```
 
-### Component Structure
+### Component Structure (OpenCode-inspired)
 
 ```
 internal/
 ├── tui/
-│   ├── app.go           # Main TUI application
-│   ├── components/
-│   │   ├── chat.go      # Chat interface
-│   │   ├── sidebar.go   # Sidebar navigation
-│   │   ├── tasklist.go  # Task list view
-│   │   ├── policytree.go # Policy tree view
-│   │   ├── prompt.go    # Input prompt with autocomplete
-│   │   └── status.go    # Status dashboard
-│   ├── commands/
-│   │   ├── task.go      # Task commands
-│   │   ├── plan.go      # Plan commands
-│   │   ├── policy.go    # Policy commands
-│   │   ├── rule.go      # Rule commands
-│   │   ├── agent.go     # Agent commands
-│   │   ├── mcp.go       # MCP commands
-│   │   ├── plugin.go    # Plugin commands
-│   │   ├── config.go    # Config commands
-│   │   ├── model.go     # Model/provider commands
-│   │   ├── context.go   # Context commands
-│   │   ├── cost.go      # Cost commands
-│   │   ├── doctor.go    # Doctor/diagnostics
-│   │   ├── audit.go     # Audit commands
-│   │   ├── debug.go     # Debug commands
-│   │   └── workflow.go  # Workflow commands
-│   ├── handlers/
-│   │   ├── ai.go        # AI interaction handler
-│   │   ├── router.go    # Command router
-│   │   └── autocomplete.go # Command autocomplete
-│   └── parser/
-│       ├── command.go   # Command parser
-│       └── args.go      # Argument parser
+│   ├── app.go           # Main TUI application (like OpenCode's app.tsx)
+│   ├── routes/          # Route-based views (like OpenCode's routes/)
+│   │   ├── home.go      # Home route (like OpenCode's home.tsx)
+│   │   └── session/     # Session route
+│   │       ├── index.go # Session view
+│   │       ├── header.go
+│   │       ├── footer.go
+│   │       ├── sidebar.go
+│   │       └── timeline.go
+│   ├── components/      # Reusable components (like OpenCode's component/)
+│   │   ├── prompt/      # Prompt component (inspired by OpenCode)
+│   │   │   ├── prompt.go      # Main prompt component
+│   │   │   ├── autocomplete.go # Autocomplete (like OpenCode's autocomplete.tsx)
+│   │   │   ├── history.go      # History (like OpenCode's history.tsx)
+│   │   │   └── stash.go        # Stash (like OpenCode's stash.tsx)
+│   │   ├── dialog/      # Dialog components
+│   │   │   ├── dialog.go       # Base dialog (like OpenCode's dialog.tsx)
+│   │   │   ├── dialog-help.go  # Help dialog
+│   │   │   ├── dialog-command.go # Command dialog
+│   │   │   ├── dialog-agent.go   # Agent dialog
+│   │   │   ├── dialog-status.go  # Status dialog
+│   │   │   └── dialog-select.go  # Select dialog
+│   │   ├── logo.go      # Logo component
+│   │   ├── tips.go      # Tips component
+│   │   └── border.go    # Border components
+│   ├── ui/              # UI primitives (like OpenCode's ui/)
+│   │   ├── toast.go     # Toast notifications
+│   │   ├── spinner.go   # Spinner/loading
+│   │   ├── link.go      # Link component
+│   │   └── textarea.go  # Textarea component
+│   ├── context/         # Context providers (like OpenCode's context/)
+│   │   ├── route.go     # Route context
+│   │   ├── sdk.go       # SDK context
+│   │   ├── sync.go      # Sync context
+│   │   ├── theme.go     # Theme context (like OpenCode's theme.tsx)
+│   │   ├── local.go     # Local context
+│   │   ├── kv.go        # KV store context
+│   │   ├── keybind.go   # Keybinding context (like OpenCode's keybind.tsx)
+│   │   ├── prompt.go    # Prompt ref context
+│   │   └── exit.go      # Exit context
+│   ├── util/            # Utilities (like OpenCode's util/)
+│   │   ├── terminal.go  # Terminal utilities (like OpenCode's terminal.ts)
+│   │   ├── clipboard.go # Clipboard utilities
+│   │   ├── editor.go    # Editor utilities
+│   │   └── transcript.go # Transcript utilities
+│   ├── commands/        # Command handlers
+│   │   ├── task.go
+│   │   ├── policy.go
+│   │   └── ...
+│   └── event.go         # TUI events (like OpenCode's event.ts)
 ├── provider/
-│   ├── registry.go      # Provider registry
-│   ├── router.go        # Request routing
-│   ├── translator.go    # Format translation
-│   └── providers/
-│       ├── openai.go
-│       ├── anthropic.go
-│       ├── custom.go    # Custom API provider
-│       └── cli.go       # CLI tool provider
+│   ├── registry.go
+│   ├── router.go
+│   └── ...
 ```
 
 ---
@@ -1039,21 +1108,32 @@ var (
 
 ---
 
-## Implementation Priority
+## Implementation Priority (OpenCode-inspired)
 
-### Phase 1 (MVP)
-- ✅ Basic TUI scaffold (bubbletea)
-- ✅ Chat interface
+### Phase 1 (MVP - Core TUI)
+- ✅ Terminal color detection (OSC escape sequences)
+- ✅ Basic TUI scaffold (bubbletea with OpenCode patterns)
+- ✅ Route system (home, session routes)
+- ✅ Dialog system (stack-based with overlay)
+- ✅ Theme provider (terminal-aware theming)
+- ✅ Prompt component (basic input)
 - ✅ AI provider routing (one provider)
-- ✅ Basic commands (/task, /policy)
 
-### Phase 2 (Enhanced)
+### Phase 2 (Enhanced - OpenCode Features)
+- ✅ Prompt autocomplete (like OpenCode's autocomplete.tsx)
+- ✅ Prompt history and stash
+- ✅ Command dialog (global command palette)
+- ✅ Toast notifications
+- ✅ Clipboard integration
 - ✅ Multiple AI providers
-- ✅ Custom API provider support
-- ✅ AI-driven task/policy creation
 - ✅ Sidebar navigation
+- ✅ Keyboard keybinding system
 
-### Phase 3 (Advanced)
+### Phase 3 (Advanced - Full OpenCode Parity)
+- ✅ Advanced prompt features (file parts, agent tags)
+- ✅ Session management (timeline, fork, rename)
+- ✅ Scroll acceleration and optimization
+- ✅ Dialog components (agent, provider, MCP, status)
 - ✅ Format translation (9router-style)
 - ✅ Provider fallback
 - ✅ Advanced routing logic
