@@ -1,0 +1,56 @@
+# Binaries
+bin/
+neona
+neona.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.a
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+*.seed
+
+# Audit logs and traces (temporary)
+internal/audit/*.log
+internal/audit/traces/
+
+# Local configuration overrides
+.local/
+
+# Environment files
+.env
+.env.local
+*.env
+
