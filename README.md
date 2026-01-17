@@ -2,12 +2,56 @@
 
 A CLI-centric AI Control Plane that coordinates multiple AI tools (Cursor, AntiGravity, Zencoder, Claude CLI) to execute multi-step tasks under shared rules, knowledge, and policy.
 
+## Quick Start
+
+```bash
+# Install dependencies
+go mod tidy
+
+# Start the daemon
+go run ./cmd/neona daemon
+
+# In another terminal - create and manage tasks
+go run ./cmd/neona task add --title "My Task" --desc "Task description"
+go run ./cmd/neona task list
+go run ./cmd/neona task claim <task-id>
+go run ./cmd/neona task run <task-id> --cmd "git status"
+
+# Or use the TUI
+go run ./cmd/neona tui
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        neona CLI                            │
+│      daemon | task | memory | tui                           │
+└─────────────────────────┬───────────────────────────────────┘
+                          │ HTTP (127.0.0.1:7466)
+┌─────────────────────────▼───────────────────────────────────┐
+│                     neonad (daemon)                         │
+├─────────────────────────────────────────────────────────────┤
+│  Control Plane Service                                      │
+│  ├── Task Management (CRUD + claim/release)                 │
+│  ├── Lease Manager (TTL + heartbeat)                        │
+│  ├── Run Executor (via Connector)                           │
+│  ├── Memory Service (add/query)                             │
+│  └── PDR Writer (audit trail)                               │
+├─────────────────────────────────────────────────────────────┤
+│  SQLite Store (~/.neona/neona.db)                           │
+│  Tables: tasks, leases, locks, runs, pdr, memory_items      │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## What Neona Is
 
 Neona is an orchestration system that:
+
 - Coordinates task-based execution across AI agents
 - Enforces shared policy and knowledge
-- Provides audit trails and evidence collection
+- Provides audit trails and evidence collection (PDR)
+- Manages task leases with TTL and heartbeat
 - Connects IDE AIs as external workers
 
 ## What Neona Is NOT
@@ -17,14 +61,114 @@ Neona is an orchestration system that:
 - Not a secret management system
 - Not an autonomous task creator
 
-## Interface
+## CLI Commands
 
-**CLI is the primary interface.** All coordination happens through the `neona` command-line tool.
+### Daemon
 
-## Agent Integration
+```bash
+neona daemon [--listen 127.0.0.1:7466] [--db ~/.neona/neona.db]
+```
 
-IDE AIs (Cursor, AntiGravity, Zencoder, Claude CLI) connect as external agents through the CLI. They claim tasks, execute under shared policy, and provide evidence for completion.
+### Tasks
+
+```bash
+neona task add --title "Title" --desc "Description"
+neona task list [--status pending|claimed|running|completed|failed]
+neona task show <task-id>
+neona task claim <task-id> [--holder <id>] [--ttl 300]
+neona task release <task-id>
+neona task run <task-id> --cmd "git status"
+neona task log <task-id>
+```
+
+### Memory
+
+```bash
+neona memory add --content "Note content" [--task <task-id>] [--tags "tag1,tag2"]
+neona memory query --q "search term"
+```
+
+### TUI
+
+```bash
+neona tui
+```
+
+**TUI Controls:**
+
+- `j/k` or `↑/↓` - Navigate
+- `Enter` - Select/View details
+- `Tab` - Cycle status filter
+- `Esc` - Go back
+- `:` - Command mode
+- `q` - Quit
+
+**TUI Commands:** `add`, `claim`, `release`, `run`, `note`, `query`
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/tasks` | POST | Create task |
+| `/tasks` | GET | List tasks (`?status=` filter) |
+| `/tasks/{id}` | GET | Get task |
+| `/tasks/{id}/claim` | POST | Claim with lease |
+| `/tasks/{id}/release` | POST | Release lease |
+| `/tasks/{id}/run` | POST | Execute command |
+| `/tasks/{id}/logs` | GET | Get run logs |
+| `/tasks/{id}/memory` | GET | Get task memory |
+| `/memory` | POST | Add memory item |
+| `/memory` | GET | Query memory (`?q=` search) |
+| `/health` | GET | Health check |
+
+## Connector Allowlist
+
+The LocalExec connector only permits safe commands:
+
+- `go test ./...`
+- `git diff`
+- `git status`
+
+## Project Structure
+
+```
+neona/
+├── cmd/neona/           # CLI entry points
+│   ├── main.go          # Cobra root command
+│   ├── daemon.go        # neona daemon
+│   ├── task.go          # neona task *
+│   ├── memory.go        # neona memory *
+│   └── tui_cmd.go       # neona tui
+├── internal/
+│   ├── models/          # Domain types
+│   ├── store/           # SQLite persistence
+│   ├── audit/           # PDR writer
+│   ├── connectors/      # Connector interface + localexec
+│   ├── controlplane/    # HTTP API + service layer
+│   └── tui/             # Bubble Tea TUI
+└── .ai/
+    └── knowledge/       # neona_overview.md
+```
 
 ## Configuration
 
 Policy, prompts, and knowledge are stored in `.ai/` directory and serve as the single source of truth for all agents.
+
+Default database: `~/.neona/neona.db`
+
+## Development
+
+```bash
+# Run tests
+go test ./...
+
+# Build binary
+go build -o neona ./cmd/neona
+
+# Run daemon with custom DB
+./neona daemon --db /tmp/test.db --listen :8080
+```
+
+## License
+
+MIT
