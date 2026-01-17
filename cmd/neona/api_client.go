@@ -65,15 +65,29 @@ func apiPost(path string, data interface{}) ([]byte, error) {
 }
 
 // CheckHealth checks if the daemon is healthy and returns the health response.
+// Unlike other API calls, this returns the parsed HealthResponse even on non-200
+// responses, allowing callers to inspect the health payload alongside the error.
 func CheckHealth() (*HealthResponse, error) {
-	resp, err := apiGet("/health")
+	url := apiAddr + "/health"
+	resp, err := apiClient.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var health HealthResponse
-	if err := json.Unmarshal(resp, &health); err != nil {
+	if err := json.Unmarshal(body, &health); err != nil {
 		return nil, fmt.Errorf("failed to parse health response: %w", err)
+	}
+
+	// Return both payload and error on non-200 status
+	if resp.StatusCode != http.StatusOK {
+		return &health, fmt.Errorf("health check failed (status %d): %s", resp.StatusCode, string(body))
 	}
 
 	return &health, nil
