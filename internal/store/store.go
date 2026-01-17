@@ -280,12 +280,21 @@ func (s *Store) AtomicClaimTask(holderID string, ttlSec int) (*models.Task, *mod
 	}
 	
 	// Claim the task
-	_, err = tx.Exec(
+	res, err := tx.Exec(
 		`UPDATE tasks SET status = ?, claimed_by = ?, claimed_at = ?, updated_at = ? WHERE id = ? AND status = ?`,
 		models.TaskStatusClaimed, holderID, now, now, taskID, models.TaskStatusPending,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("claim task: %w", err)
+	}
+	
+	// Verify the task was actually claimed (not already claimed by another worker)
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return nil, nil, fmt.Errorf("check rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return nil, nil, nil // Task was already claimed by another worker, return nil to indicate no task available
 	}
 	
 	// Create lease
