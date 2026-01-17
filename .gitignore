@@ -1,6 +1,6 @@
 # Binaries
 bin/
-neona
+/neona
 neona.exe
 *.exe
 *.dll
