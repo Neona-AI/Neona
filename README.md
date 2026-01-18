@@ -1,10 +1,15 @@
 # Neona
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/fentz26/Neona)](https://github.com/fentz26/Neona/releases)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-A CLI-centric AI Control Plane that coordinates multiple AI tools (Cursor, AntiGravity, Zencoder, Claude CLI) to execute multi-step tasks under shared rules, knowledge, and policy.
+**A CLI-centric AI Control Plane** that coordinates multiple AI tools (Cursor, AntiGravity, Zencoder, Claude CLI) to execute multi-step tasks under shared rules, knowledge, and policy.
 
-## Quick Start
+Created by **Fentzzz (fentz26)**.
+
+---
+
+## 🚀 Quick Start
 
 ### Installation
 
@@ -25,7 +30,7 @@ That's it! Neona's TUI will launch, automatically starting the background daemon
 
 > **Note:** Neona requires `go` to be installed on your system.
 
-## Architecture
+## 🏗️ Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
@@ -48,7 +53,7 @@ That's it! Neona's TUI will launch, automatically starting the background daemon
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## What Neona Is
+## ❓ What Neona Is
 
 Neona is an orchestration system that:
 
@@ -58,14 +63,14 @@ Neona is an orchestration system that:
 - Manages task leases with TTL and heartbeat
 - Connects IDE AIs as external workers
 
-## What Neona Is NOT
+## ❌ What Neona Is NOT
 
 - Not a standalone application
 - Not a business logic execution engine
 - Not a secret management system
 - Not an autonomous task creator
 
-## CLI Commands
+## 💻 CLI Commands
 
 ### Daemon
 
@@ -109,10 +114,10 @@ neona tui
 
 **TUI Commands:** `add`, `claim`, `release`, `run`, `note`, `query`
 
-## API Reference
+## 🔌 API Reference
 
 | Endpoint | Method | Description |
-|----------|--------|-------------|
+| :--- | :--- | :--- |
 | `/tasks` | POST | Create task |
 | `/tasks` | GET | List tasks (`?status=` filter) |
 | `/tasks/{id}` | GET | Get task |
@@ -125,7 +130,7 @@ neona tui
 | `/memory` | GET | Query memory (`?q=` search) |
 | `/health` | GET | Health check |
 
-## Connector Allowlist
+## 🛡️ Connector Allowlist
 
 The LocalExec connector only permits safe commands:
 
@@ -133,7 +138,7 @@ The LocalExec connector only permits safe commands:
 - `git diff`
 - `git status`
 
-## Project Structure
+## 📂 Project Structure
 
 ```text
 neona/
@@ -154,13 +159,13 @@ neona/
     └── knowledge/       # neona_overview.md
 ```
 
-## Configuration
+## ⚙️ Configuration
 
 Policy, prompts, and knowledge are stored in `.ai/` directory and serve as the single source of truth for all agents.
 
 Default database: `~/.neona/neona.db`
 
-## Development
+## 🛠️ Development
 
 ```bash
 # Run tests
@@ -173,6 +178,12 @@ go build -o neona ./cmd/neona
 ./neona daemon --db /tmp/test.db --listen :8080
 ```
 
-## License
+## 📜 License
 
-MIT
+### Copyright (c) 2026 Fentzzz (fentz26)
+
+Licensed under the **GNU Affero General Public License v3 (AGPL v3)**.
+See the [LICENSE](LICENSE) file for details.
+
+This is the **open source core** of the Neona platform.
+For multi-tenant cloud orchestration, managed teams, and enterprise features, check out [Neona Cloud](https://github.com/fentz26/Neona-Cloud).

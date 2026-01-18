@@ -23,9 +23,9 @@ var (
 	warningColor   = lipgloss.Color("#F59E0B")
 	errorColor     = lipgloss.Color("#EF4444")
 	mutedColor     = lipgloss.Color("#6B7280")
-	bgColor        = lipgloss.Color("#1F2937")
-	fgColor        = lipgloss.Color("#F9FAFB")
-	cyanColor      = lipgloss.Color("#06B6D4")
+
+	fgColor   = lipgloss.Color("#F9FAFB")
+	cyanColor = lipgloss.Color("#06B6D4")
 
 	// Styles
 	titleStyle = lipgloss.NewStyle().
@@ -55,11 +55,6 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(mutedColor).
 			Italic(true)
-
-	panelStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(mutedColor).
-			Padding(0, 1)
 
 	agentOnlineStyle = lipgloss.NewStyle().
 				Foreground(successColor).
@@ -221,9 +216,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "r":
-			if a.mode == "list" {
+			switch a.mode {
+			case "list":
 				return a, a.fetchTasks()
-			} else if a.mode == "agents" {
+			case "agents":
 				return a, a.scanAgents()
 			}
 
@@ -433,7 +429,7 @@ func (a *App) renderTaskList(height int) string {
 	return strings.Join(lines, "\n")
 }
 
-func (a *App) renderAgentsPanel(height int) string {
+func (a *App) renderAgentsPanel(_ int) string {
 	var b strings.Builder
 
 	b.WriteString("\n  🤖 Connected Agents\n")
@@ -479,7 +475,7 @@ func (a *App) renderAgentsPanel(height int) string {
 	return b.String()
 }
 
-func (a *App) renderTaskDetail(height int) string {
+func (a *App) renderTaskDetail(_ int) string {
 	if a.currentTask == nil {
 		return "\n  Loading...\n"
 	}
@@ -814,7 +810,7 @@ func (a *App) tickCmd() tea.Cmd {
 	})
 }
 
-func (a *App) renderWorkersPanel(height int) string {
+func (a *App) renderWorkersPanel(_ int) string {
 	var b strings.Builder
 
 	b.WriteString("\n  ⚙️  Worker Pool Monitor\n")

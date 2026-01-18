@@ -65,13 +65,14 @@ func (s *Suggestions) Update(input string) {
 
 	// Check for trigger characters
 	firstChar := string(input[0])
-	if firstChar == "/" {
+	switch firstChar {
+	case "/":
 		s.prefix = "/"
 		s.items = commandSuggestions // Reset to commands
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "/"))
 		s.filter(query)
-	} else if firstChar == "@" {
+	case "@":
 		s.prefix = "@"
 		// For @, start with empty list until agents/tasks are populated
 		// Do NOT reuse previous s.items if it was commands
@@ -81,13 +82,13 @@ func (s *Suggestions) Update(input string) {
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "@"))
 		s.filter(query)
-	} else if firstChar == "!" {
+	case "!":
 		s.prefix = "!"
 		s.items = actionSuggestions // Reset to actions
 		s.visible = true
 		query := strings.ToLower(strings.TrimPrefix(input, "!"))
 		s.filter(query)
-	} else {
+	default:
 		s.visible = false
 		s.filtered = nil
 		s.prefix = ""
