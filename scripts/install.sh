@@ -4,7 +4,7 @@ set -e
 # Neona Installer
 # Usage: curl -fsSL https://neona.app/install.sh | bash
 
-REPO="fentz26/Neona"
+REPO="Neona-AI/Neona"
 BINARY_NAME="neona"
 INSTALL_DIR="/usr/local/bin"
 GO_BIN_DIR="$HOME/go/bin"
@@ -12,17 +12,109 @@ GO_BIN_DIR="$HOME/go/bin"
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 Installing Neona Control Plane...${NC}"
 
-# Check for Go installation
-if command -v go &> /dev/null; then
+# Detect OS and Architecture
+detect_platform() {
+    OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    ARCH="$(uname -m)"
+    
+    case "$OS" in
+        linux)  OS="linux" ;;
+        darwin) OS="darwin" ;;
+        mingw*|msys*|cygwin*) OS="windows" ;;
+        *)
+            echo -e "${RED}✗ Unsupported operating system: $OS${NC}"
+            exit 1
+            ;;
+    esac
+    
+    case "$ARCH" in
+        x86_64|amd64)  ARCH="amd64" ;;
+        aarch64|arm64) ARCH="arm64" ;;
+        armv7l)        ARCH="arm" ;;
+        i386|i686)     ARCH="386" ;;
+        *)
+            echo -e "${RED}✗ Unsupported architecture: $ARCH${NC}"
+            exit 1
+            ;;
+    esac
+    
+    echo -e "${BLUE}ℹ Detected platform: ${OS}/${ARCH}${NC}"
+}
+
+# Get latest release version from GitHub API
+get_latest_version() {
+    LATEST_VERSION=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+    
+    if [ -z "$LATEST_VERSION" ]; then
+        echo -e "${YELLOW}⚠ Could not fetch latest version. Trying 'latest' tag...${NC}"
+        LATEST_VERSION="latest"
+    fi
+    
+    echo -e "${BLUE}ℹ Latest version: ${LATEST_VERSION}${NC}"
+}
+
+# Download and install pre-built binary
+install_from_release() {
+    detect_platform
+    get_latest_version
+    
+    DOWNLOAD_URL="https://github.com/$REPO/releases/download/${LATEST_VERSION}/neona_${OS}_${ARCH}.tar.gz"
+    
+    echo -e "${BLUE}⬇ Downloading from: ${DOWNLOAD_URL}${NC}"
+    
+    # Create temporary directory
+    TMP_DIR=$(mktemp -d)
+    trap "rm -rf $TMP_DIR" EXIT
+    
+    # Download and extract
+    if ! curl -fsSL "$DOWNLOAD_URL" -o "$TMP_DIR/neona.tar.gz"; then
+        echo -e "${RED}✗ Failed to download binary. Release may not exist yet.${NC}"
+        echo -e "${YELLOW}Please install Go from https://go.dev/dl/ and try again.${NC}"
+        echo -e "${YELLOW}Or check releases at: https://github.com/$REPO/releases${NC}"
+        exit 1
+    fi
+    
+    tar -xzf "$TMP_DIR/neona.tar.gz" -C "$TMP_DIR"
+    
+    # Install binary
+    if [ -w "$INSTALL_DIR" ]; then
+        mv "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/"
+        chmod +x "$INSTALL_DIR/$BINARY_NAME"
+    elif command -v sudo &> /dev/null; then
+        echo -e "${YELLOW}⚠ Requesting sudo to install to $INSTALL_DIR${NC}"
+        sudo mv "$TMP_DIR/$BINARY_NAME" "$INSTALL_DIR/"
+        sudo chmod +x "$INSTALL_DIR/$BINARY_NAME"
+    else
+        # Fallback to user's local bin
+        LOCAL_BIN="$HOME/.local/bin"
+        mkdir -p "$LOCAL_BIN"
+        mv "$TMP_DIR/$BINARY_NAME" "$LOCAL_BIN/"
+        chmod +x "$LOCAL_BIN/$BINARY_NAME"
+        
+        if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
+            echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.bashrc
+            echo 'export PATH=$PATH:$HOME/.local/bin' >> ~/.zshrc 2>/dev/null || true
+            echo -e "${YELLOW}ℹ Added $LOCAL_BIN to PATH. Restart your terminal or run: source ~/.bashrc${NC}"
+        fi
+        
+        INSTALL_DIR="$LOCAL_BIN"
+    fi
+    
+    echo -e "${GREEN}✅ Neona installed successfully to $INSTALL_DIR/$BINARY_NAME${NC}"
+}
+
+# Install via Go (preferred if Go is available)
+install_from_go() {
     echo -e "${GREEN}✓ Go detected. Installing via 'go install'...${NC}"
     
     # Install directly from main repo
-    go install github.com/fentz26/neona/cmd/neona@latest
+    go install github.com/$REPO/cmd/neona@latest
     
     # Try to make it globally available immediately via symlink
     if [ -d "/usr/local/bin" ]; then
@@ -39,29 +131,32 @@ if command -v go &> /dev/null; then
     fi
 
     echo -e "${GREEN}✅ Neona installed successfully!${NC}"
-    
-    if command -v neona &> /dev/null || [ -f "/usr/local/bin/neona" ]; then
-        echo -e "Run ${GREEN}neona${NC} to start."
+}
+
+# Main installation logic
+main() {
+    # Check for Go installation first (preferred method)
+    if command -v go &> /dev/null; then
+        install_from_go
     else
-        echo -e "${BLUE}⚠️  To start using neona, restart your terminal or run:${NC}"
-        echo -e "${GREEN}  source ~/.bashrc${NC}"
+        echo -e "${YELLOW}ℹ Go not found. Attempting to download pre-built binary...${NC}"
+        install_from_release
     fi
-    exit 0
-fi
+    
+    # Verify installation
+    echo ""
+    if command -v neona &> /dev/null; then
+        INSTALLED_VERSION=$(neona version 2>/dev/null || echo "unknown")
+        echo -e "${GREEN}🎉 Installation complete!${NC}"
+        echo -e "   Version: ${BLUE}${INSTALLED_VERSION}${NC}"
+        echo -e "   Run ${GREEN}neona${NC} to start."
+    elif [ -f "/usr/local/bin/neona" ] || [ -f "$HOME/.local/bin/neona" ] || [ -f "$GO_BIN_DIR/neona" ]; then
+        echo -e "${GREEN}🎉 Installation complete!${NC}"
+        echo -e "${YELLOW}⚠ Restart your terminal or run: source ~/.bashrc${NC}"
+    else
+        echo -e "${RED}✗ Installation may have failed. Please check for errors above.${NC}"
+        exit 1
+    fi
+}
 
-# Fallback: Download pre-built binary (Future implementation when releases exist)
-echo -e "${RED}x Go not found.${NC}"
-echo "For now, Neona requires Go to be installed."
-echo "Please install Go from https://go.dev/dl/ and try again."
-exit 1
-
-# Future Release Download Logic (Commented out until releases are active)
-# OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-# ARCH="$(uname -m)"
-# if [ "$ARCH" == "x86_64" ]; then ARCH="amd64"; fi
-# if [ "$ARCH" == "aarch64" ]; then ARCH="arm64"; fi
-# URL="https://github.com/$REPO/releases/latest/download/neona_${OS}_${ARCH}.tar.gz"
-# curl -fsSL "$URL" -o neona.tar.gz
-# tar -xzf neona.tar.gz
-# sudo mv neona $INSTALL_DIR/
-# echo "Installed to $INSTALL_DIR/neona"
+main
