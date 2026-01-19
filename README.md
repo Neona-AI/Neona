@@ -369,7 +369,7 @@ export NEONA_LISTEN=127.0.0.1:8080
 The Go CLI discovers the Python TUI using:
 1. `NEONA_TUI_PATH` environment variable
 2. `neona-tui` in system PATH
-3. Development fallback: `./neona-tui/neona_tui/app.py`
+3. Development fallback (when run from repo root): `neona-tui/neona_tui/app.py`
 
 ## 🛠️ Development
 
