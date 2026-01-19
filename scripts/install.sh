@@ -12,10 +12,26 @@ GO_BIN_DIR="$HOME/go/bin"
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+CYAN='\033[0;96m'  # Light blue/cyan for banner
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# ASCII Banner
+show_banner() {
+    echo ""
+    echo -e "${CYAN}"
+    cat << 'EOF'
+ _  _  ____  _____  _  _    __   
+( \( )( ___)(  _  )( \( )  /__\  
+ )  (  )__)  )(_)(  )  (  /(__)\ 
+(_)\_)(____)(_____)(_)\_)(__)(__)
+EOF
+    echo -e "${NC}"
+    echo ""
+}
+
+show_banner
 echo -e "${BLUE}🚀 Installing Neona Control Plane...${NC}"
 
 # Detect OS and Architecture
