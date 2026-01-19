@@ -38,10 +38,31 @@ python -m neona_tui.app
 | Command | Description |
 |---------|-------------|
 | `add <title>` | Create a new task |
-| `claim` | Claim selected task |
-| `release` | Release selected task |
+| `claim` | Claim selected task (requires selection) |
+| `release` | Release selected task (must be owner) |
+| `run <cmd> [args]` | Run command on claimed task |
+| `note <text>` | Add a memory note to selected task |
+| `query <q>` | Search memory items |
 | `refresh` or `r` | Refresh task list |
 | `q` | Quit |
+
+### API Endpoints Used
+
+The TUI client communicates with the Go daemon via these endpoints:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Daemon health check (version, DB status) |
+| `/tasks` | GET/POST | List or create tasks |
+| `/tasks/{id}` | GET | Get task details |
+| `/tasks/{id}/claim` | POST | Claim task (requires `holder_id`, `ttl_sec`) |
+| `/tasks/{id}/release` | POST | Release task (requires `holder_id`) |
+| `/tasks/{id}/run` | POST | Run command (requires `holder_id`, `command`, `args`) |
+| `/tasks/{id}/logs` | GET | Get task run logs |
+| `/tasks/{id}/memory` | GET | Get task memory items |
+| `/memory` | POST | Add memory item |
+| `/memory?q=...` | GET | Query memory |
+| `/workers` | GET | Worker pool stats |
 
 ### Keyboard Shortcuts
 
