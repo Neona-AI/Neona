@@ -498,7 +498,9 @@ func (s *Server) handleMCPRoute(w http.ResponseWriter, r *http.Request) {
 		TotalTools:   result.TotalTools,
 		ToolBudget:   80, // Default budget
 	}
-
-	w.Header().Set("Content-Type", "application/json")
+w.Header().Set("Content-Type", "application/json")
+if err := json.NewEncoder(w).Encode(resp); err != nil {
+    log.Printf("Failed to encode MCP route response: %v", err)
+}
 	json.NewEncoder(w).Encode(resp)
 }
