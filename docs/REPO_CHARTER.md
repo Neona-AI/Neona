@@ -25,7 +25,7 @@
 |--------|-------|
 | Distribution | Single static binary (Go) |
 | Platforms | linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64 |
-| Install | `curl -fsSL https://neona.app/install.sh \| bash` |
+| Install | `curl -fsSL https://cli.neona.app/install \| bash` |
 | Data | `~/.neona/neona.db` (SQLite) |
 | Listen | `127.0.0.1:7466` (configurable) |
 
