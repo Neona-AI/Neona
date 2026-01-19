@@ -173,3 +173,32 @@ jobs:
             dist/neona-windows-amd64.exe.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
+
+      - name: Send Pushover Notification - Success
+        if: success()
+        run: |
+          VERSION="v${{ needs.build.outputs.version }}"
+          REPO_NAME="${{ github.repository }}"
+          
+          curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=✅ Deploy Success: ${REPO_NAME}" \
+            --form-string "message=Version ${VERSION} deployed successfully to production" \
+            --form-string "priority=0" \
+            --form-string "sound=pushover" \
+            https://api.pushover.net/1/messages.json
+
+      - name: Send Pushover Notification - Failure
+        if: failure()
+        run: |
+          VERSION="v${{ needs.build.outputs.version }}"
+          REPO_NAME="${{ github.repository }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
+          curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=❌ Deploy Failed: ${REPO_NAME}" \
+            --form-string "message=Version ${VERSION} deployment failed. Check: ${WORKFLOW_URL}" \
+            --form-string "priority=1" \
+            --form-string "sound=siren" \
+            https://api.pushover.net/1/messages.json

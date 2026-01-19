@@ -1,0 +1,55 @@
+name: Pushover Notification
+
+on:
+  workflow_call:
+    inputs:
+      status:
+        description: 'Deployment status (success or failure)'
+        required: true
+        type: string
+      version:
+        description: 'Version being deployed'
+        required: true
+        type: string
+      workflow_url:
+        description: 'URL to the workflow run'
+        required: false
+        type: string
+    secrets:
+      PUSHOVER_USER_KEY:
+        required: true
+      PUSHOVER_API_TOKEN:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Pushover Notification
+        run: |
+          REPO_NAME="${{ github.repository }}"
+          VERSION="${{ inputs.version }}"
+          
+          if [ "${{ inputs.status }}" == "success" ]; then
+            TITLE="✅ Deploy Success: ${REPO_NAME}"
+            MESSAGE="Version ${VERSION} deployed successfully to production"
+            PRIORITY="0"
+            SOUND="pushover"
+          else
+            WORKFLOW_URL="${{ inputs.workflow_url }}"
+            if [ -z "${WORKFLOW_URL}" ]; then
+              WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            fi
+            TITLE="❌ Deploy Failed: ${REPO_NAME}"
+            MESSAGE="Version ${VERSION} deployment failed. Check: ${WORKFLOW_URL}"
+            PRIORITY="1"
+            SOUND="siren"
+          fi
+          
+          curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=${TITLE}" \
+            --form-string "message=${MESSAGE}" \
+            --form-string "priority=${PRIORITY}" \
+            --form-string "sound=${SOUND}" \
+            https://api.pushover.net/1/messages.json
