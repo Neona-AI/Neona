@@ -478,8 +478,9 @@ func (s *Server) handleMCPRoute(w http.ResponseWriter, r *http.Request) {
 
 	result, err := s.mcpRouter.Route(r.Context(), task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	    log.Printf("MCP routing failed: %v", err)
+	    http.Error(w, "internal server error", http.StatusInternalServerError)
+	    return
 	}
 
 	// Build response
