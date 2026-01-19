@@ -2,7 +2,7 @@
 set -eu
 
 # Neona Installer (production-grade, POSIX-sh compatible)
-# Usage: curl -fsSL https://cli.neona.app/install | sh
+# Usage: curl -fsSL https://cli.neona.app/install.sh | bash
 #
 # Environment Variables:
 #   NEONA_VERSION          Pin specific version (default: latest from API)
