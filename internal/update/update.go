@@ -95,7 +95,8 @@ func (c *Checker) ShouldCheck() bool {
 // CheckForUpdate checks GitHub for a newer version.
 // Returns (hasUpdate, latestVersion, error).
 func (c *Checker) CheckForUpdate() (bool, string, error) {
-	url := fmt.Sprintf(GitHubAPIURL, GitHubRepo)
+	// Use /releases endpoint (not /releases/latest) because all our releases are prereleases
+	url := fmt.Sprintf("https://api.github.com/repos/%s/releases", GitHubRepo)
 
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(url)
@@ -108,10 +109,17 @@ func (c *Checker) CheckForUpdate() (bool, string, error) {
 		return false, "", fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
 	}
 
-	var release GitHubRelease
-	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+	var releases []GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
 		return false, "", fmt.Errorf("failed to parse release info: %w", err)
 	}
+
+	if len(releases) == 0 {
+		return false, "", fmt.Errorf("no releases found")
+	}
+
+	// Use the first (latest) release
+	release := releases[0]
 
 	latestVersion := strings.TrimPrefix(release.TagName, "v")
 	currentVersion := strings.TrimPrefix(Version, "v")
