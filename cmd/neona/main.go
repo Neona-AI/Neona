@@ -50,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(memoryCmd)
 	rootCmd.AddCommand(tuiCmd)
 	rootCmd.AddCommand(mcpCmd)
+	rootCmd.AddCommand(logCmd)
 }
 
 func main() {

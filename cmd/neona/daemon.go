@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,7 +41,43 @@ func init() {
 	daemonCmd.Flags().StringVar(&dbPath, "db", defaultDB, "Path to SQLite database")
 }
 
+// setupLogging configures logging to write to both stdout and a log file
+func setupLogging() (*os.File, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	logDir := filepath.Join(homeDir, ".neona")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create log directory: %w", err)
+	}
+
+	logPath := filepath.Join(logDir, "neona.log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log file: %w", err)
+	}
+
+	// Write to both stdout and the log file
+	multiWriter := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(multiWriter)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds)
+
+	return logFile, nil
+}
+
 func runDaemon(cmd *cobra.Command, args []string) error {
+	// Setup logging to file and stdout
+	logFile, err := setupLogging()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to setup file logging: %v\n", err)
+		// Continue without file logging
+	}
+	if logFile != nil {
+		defer logFile.Close()
+	}
+
 	log.Println("Starting Neona daemon...")
 
 	// Initialize store
