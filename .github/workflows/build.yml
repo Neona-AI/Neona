@@ -185,17 +185,17 @@ jobs:
           
           MESSAGE="Version ${VERSION} deployed successfully to production.
 
-Release Details:
-- Repository: ${REPO_NAME}
-- Commit: ${SHORT_SHA}
-- Branch: ${{ github.ref_name }}
+          Release Details:
+          - Repository: ${REPO_NAME}
+          - Commit: ${SHORT_SHA}
+          - Branch: ${{ github.ref_name }}
 
-Available platforms:
-- Linux (AMD64/ARM64)
-- macOS (Intel/Apple Silicon)
-- Windows (AMD64)
+          Available platforms:
+          - Linux (AMD64/ARM64)
+          - macOS (Intel/Apple Silicon)
+          - Windows (AMD64)
 
-Release: ${RELEASE_URL}"
+          Release: ${RELEASE_URL}"
           
           curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
             --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
@@ -218,13 +218,13 @@ Release: ${RELEASE_URL}"
           
           MESSAGE="Version ${VERSION} deployment failed.
 
-Details:
-- Repository: ${REPO_NAME}
-- Commit: ${SHORT_SHA}
-- Branch: ${{ github.ref_name }}
-- Workflow Run: ${{ github.run_id }}
+          Details:
+          - Repository: ${REPO_NAME}
+          - Commit: ${SHORT_SHA}
+          - Branch: ${{ github.ref_name }}
+          - Workflow Run: ${{ github.run_id }}
 
-Check the workflow logs for more information."
+          Check the workflow logs for more information."
           
           curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
             --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
