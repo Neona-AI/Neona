@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/fentz26/neona/internal/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,12 +27,80 @@ func runTUI(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 2. Launch TUI
-	app := tui.New(apiAddr)
-	if err := app.Run(); err != nil {
-		return fmt.Errorf("TUI error: %w", err)
+	// 2. Launch Python TUI (Rich/Textual)
+	pythonScript, err := findPythonTUI()
+	if err != nil {
+		return fmt.Errorf("failed to find neona-tui: %w\nPlease ensure neona-tui is installed or built", err)
 	}
-	return nil
+
+	return runPythonTUI(pythonScript)
+}
+
+func findPythonTUI() (string, error) {
+	searched := []string{}
+
+	// 0. Check env var
+	if envPath := os.Getenv("NEONA_TUI_PATH"); envPath != "" {
+		if _, err := os.Stat(envPath); err == nil {
+			return envPath, nil
+		}
+		searched = append(searched, fmt.Sprintf("env NEONA_TUI_PATH (%s)", envPath))
+	}
+
+	// 1. Check for local dev environment relative to CWD
+	cwd, err := os.Getwd()
+	if err == nil {
+		localPath := filepath.Join(cwd, "neona-tui", ".venv", "bin", "neona-tui")
+		if _, err := os.Stat(localPath); err == nil {
+			return localPath, nil
+		}
+		searched = append(searched, localPath)
+	}
+
+	// 2. Check relative to executable
+	exe, err := os.Executable()
+	if err == nil {
+		exeDir := filepath.Dir(exe)
+		// Try sibling (bin/neona -> bin/neona-tui/.venv...) which is unlikely but possible
+		siblingPath := filepath.Join(exeDir, "neona-tui", ".venv", "bin", "neona-tui")
+		if _, err := os.Stat(siblingPath); err == nil {
+			return siblingPath, nil
+		}
+		searched = append(searched, siblingPath)
+
+		// Try one level up (if neona is in bin/, look in root/neona-tui)
+		// e.g. /path/to/repo/neona -> /path/to/repo/neona-tui
+		// The previous checked same dir, let's check one up if we were in a bin folder?
+		// But in this workspace, neona is in root.
+	}
+
+	// 3. Check for binary in PATH
+	if path, err := exec.LookPath("neona-tui"); err == nil {
+		return path, nil
+	}
+	searched = append(searched, "PATH (neona-tui)")
+
+	// 4. Hardcoded fallback for known dev path (Development helper)
+	home, err := os.UserHomeDir()
+	if err == nil {
+		devPath := filepath.Join(home, "Documents/Neona/Neona Release/neona-tui/.venv/bin/neona-tui")
+		if _, err := os.Stat(devPath); err == nil {
+			return devPath, nil
+		}
+		searched = append(searched, devPath)
+	}
+
+	return "", fmt.Errorf("could not locate neona-tui executable.\nSearched in:\n- %s",
+		filepath.Join(strings.Join(searched, "\n- ")))
+}
+
+func runPythonTUI(path string) error {
+	cmd := exec.Command(path)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = os.Environ()
+	return cmd.Run()
 }
 
 func isDaemonRunning(addr string) bool {

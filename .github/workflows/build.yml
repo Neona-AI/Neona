@@ -78,6 +78,15 @@ jobs:
           # Windows AMD64
           GOOS=windows GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o dist/neona-windows-amd64.exe ./cmd/neona
 
+      - name: Generate SHA256 checksums
+        run: |
+          cd dist
+          for file in neona-*; do
+            sha256sum "$file" > "${file}.sha256"
+            echo "Generated checksum for $file"
+          done
+          cat *.sha256
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -143,17 +152,86 @@ jobs:
             - **macOS Apple Silicon**: `neona-darwin-arm64`
             - **Windows**: `neona-windows-amd64.exe`
             
+            SHA256 checksums are provided for each binary (`.sha256` files).
+            
             ### Install
             ```bash
-            curl -fsSL https://neona.app/install.sh | bash
+            curl -fsSL https://cli.neona.app/install.sh | bash
             ```
           draft: false
           prerelease: true
           files: |
             dist/neona-linux-amd64
+            dist/neona-linux-amd64.sha256
             dist/neona-linux-arm64
+            dist/neona-linux-arm64.sha256
             dist/neona-darwin-amd64
+            dist/neona-darwin-amd64.sha256
             dist/neona-darwin-arm64
+            dist/neona-darwin-arm64.sha256
             dist/neona-windows-amd64.exe
+            dist/neona-windows-amd64.exe.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.ACTION_TOKEN }}
+
+      - name: Send Pushover Notification - Success
+        if: success()
+        run: |
+          VERSION="v${{ needs.build.outputs.version }}"
+          REPO_NAME="${{ github.repository }}"
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          MESSAGE="Version ${VERSION} deployed successfully to production.
+
+          Release Details:
+          - Repository: ${REPO_NAME}
+          - Commit: ${SHORT_SHA}
+          - Branch: ${{ github.ref_name }}
+
+          Available platforms:
+          - Linux (AMD64/ARM64)
+          - macOS (Intel/Apple Silicon)
+          - Windows (AMD64)
+
+          Release: ${RELEASE_URL}"
+          
+          curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=[OK] Deploy Success: ${REPO_NAME}" \
+            --form-string "message=${MESSAGE}" \
+            --form-string "url=${RELEASE_URL}" \
+            --form-string "url_title=View Release" \
+            --form-string "priority=0" \
+            --form-string "sound=pushover" \
+            https://api.pushover.net/1/messages.json
+
+      - name: Send Pushover Notification - Failure
+        if: failure()
+        run: |
+          VERSION="v${{ needs.build.outputs.version }}"
+          REPO_NAME="${{ github.repository }}"
+          WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          MESSAGE="Version ${VERSION} deployment failed.
+
+          Details:
+          - Repository: ${REPO_NAME}
+          - Commit: ${SHORT_SHA}
+          - Branch: ${{ github.ref_name }}
+          - Workflow Run: ${{ github.run_id }}
+
+          Check the workflow logs for more information."
+          
+          curl -s --form-string "token=${{ secrets.PUSHOVER_API_TOKEN }}" \
+            --form-string "user=${{ secrets.PUSHOVER_USER_KEY }}" \
+            --form-string "title=[FAIL] Deploy Failed: ${REPO_NAME}" \
+            --form-string "message=${MESSAGE}" \
+            --form-string "url=${WORKFLOW_URL}" \
+            --form-string "url_title=View Workflow Logs" \
+            --form-string "priority=1" \
+            --form-string "sound=siren" \
+            https://api.pushover.net/1/messages.json
