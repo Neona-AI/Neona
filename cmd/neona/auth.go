@@ -41,34 +41,40 @@ var whoamiCmd = &cobra.Command{
 	RunE:  runWhoami,
 }
 
+var tokenFlag string
+
+// Define direct commands at package level
+var directLoginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "Sign in to your Neona account",
+	Long:  `Sign in to your Neona account using browser-based OAuth.`,
+	RunE:  runLogin,
+}
+
+var directLogoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "Sign out of your Neona account",
+	RunE:  runLogout,
+}
+
 func init() {
 	authCmd.AddCommand(loginCmd)
 	authCmd.AddCommand(logoutCmd)
 	authCmd.AddCommand(whoamiCmd)
 
+	// Add --token flag to login commands
+	loginCmd.Flags().StringVar(&tokenFlag, "token", "", "Authenticate using a token JSON string (alternative to browser flow)")
+	directLoginCmd.Flags().StringVar(&tokenFlag, "token", "", "Authenticate using a token JSON string (alternative to browser flow)")
+
 	// Add neona login as an alias
 	rootCmd.AddCommand(authCmd)
 
 	// Also add login directly to root for convenience
-	directLoginCmd := &cobra.Command{
-		Use:   "login",
-		Short: "Sign in to your Neona account",
-		Long:  `Sign in to your Neona account using browser-based OAuth.`,
-		RunE:  runLogin,
-	}
-	directLogoutCmd := &cobra.Command{
-		Use:   "logout",
-		Short: "Sign out of your Neona account",
-		RunE:  runLogout,
-	}
 	rootCmd.AddCommand(directLoginCmd)
 	rootCmd.AddCommand(directLogoutCmd)
 }
 
 func runLogin(cmd *cobra.Command, args []string) error {
-	fmt.Println("🔐 Neona CLI Authentication")
-	fmt.Println()
-
 	manager, err := auth.NewManager()
 	if err != nil {
 		return fmt.Errorf("failed to initialize auth: %w", err)
@@ -77,17 +83,32 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	// Check if already authenticated
 	if manager.IsAuthenticated() {
 		user := manager.GetUser()
-		fmt.Printf("✓ Already signed in as %s (%s)\n", user.Username, user.Email)
+		fmt.Printf("└  Already signed in as %s (%s)\n", user.Username, user.Email)
 		fmt.Println()
-		fmt.Println("Use 'neona logout' to sign out, or 'neona auth login' to re-authenticate.")
+		fmt.Println("   Use 'neona logout' to sign out, or 'neona auth login' to re-authenticate.")
 		return nil
 	}
 
-	fmt.Println("Opening browser for authentication...")
-	fmt.Println("Please complete the sign-in process in your browser.")
-	fmt.Println()
-	fmt.Println("Waiting for authentication... (Press Ctrl+C to cancel)")
-	fmt.Println()
+	// Check if --token flag was provided
+	if tokenFlag != "" {
+		fmt.Println("┌  Authenticating with token...")
+		session, err := manager.LoginWithToken(tokenFlag)
+		if err != nil {
+			fmt.Println("└  ✗ Authentication failed")
+			return fmt.Errorf("token authentication failed: %w", err)
+		}
+
+		fmt.Println("│")
+		fmt.Printf("└  ✓ Signed in as %s (%s)\n", session.User.Username, session.User.Email)
+		return nil
+	}
+
+	// Browser-based OAuth flow
+	fmt.Println("┌  Opening browser for authentication...")
+	fmt.Println("│  Please complete the sign-in process in your browser.")
+	fmt.Println("│")
+	fmt.Println("│  Waiting for authentication... (Press Ctrl+C to cancel)")
+	fmt.Println("│")
 
 	// Create context with signal handling
 	ctx, cancel := context.WithCancel(context.Background())
@@ -98,7 +119,8 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		fmt.Println("\n\nAuthentication cancelled.")
+		fmt.Println("│")
+		fmt.Println("└  Authentication cancelled.")
 		cancel()
 	}()
 
@@ -108,17 +130,11 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		if ctx.Err() != nil {
 			return nil // User cancelled
 		}
+		fmt.Println("└  ✗ Authentication failed")
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	fmt.Println("┌────────────────────────────────────────────────┐")
-	fmt.Println("│                                                │")
-	fmt.Printf("│  ✓ Signed in as %-29s │\n", truncateString(session.User.Username, 29))
-	fmt.Printf("│    %s%-40s │\n", "📧 ", truncateString(session.User.Email, 38))
-	fmt.Println("│                                                │")
-	fmt.Println("└────────────────────────────────────────────────┘")
-	fmt.Println()
-	fmt.Println("Your CLI is now connected to your Neona account.")
+	fmt.Printf("└  ✓ Signed in as %s (%s)\n", session.User.Username, session.User.Email)
 
 	return nil
 }

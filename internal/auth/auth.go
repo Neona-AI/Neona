@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -11,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -178,6 +180,78 @@ func (m *Manager) Login(ctx context.Context) (*Session, error) {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+// LoginWithToken authenticates using a token JSON string.
+func (m *Manager) LoginWithToken(tokenJSON string) (*Session, error) {
+	var session Session
+
+	// Check if token is in NN-UTK format
+	if strings.HasPrefix(tokenJSON, "NN-UTK-") {
+		// Extract base64url encoded part
+		encoded := strings.TrimPrefix(tokenJSON, "NN-UTK-")
+
+		// Decode base64url (replace URL-safe chars back to standard base64)
+		encoded = strings.ReplaceAll(encoded, "-", "+")
+		encoded = strings.ReplaceAll(encoded, "_", "/")
+
+		// Add padding if needed
+		switch len(encoded) % 4 {
+		case 2:
+			encoded += "=="
+		case 3:
+			encoded += "="
+		}
+
+		// Decode from base64
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err != nil {
+			return nil, fmt.Errorf("invalid NN-UTK token encoding: %w", err)
+		}
+
+		// Parse JSON
+		if err := json.Unmarshal(decoded, &session); err != nil {
+			return nil, fmt.Errorf("invalid NN-UTK token data: %w", err)
+		}
+	} else {
+		// Try to parse as raw JSON (backward compatibility)
+		if err := json.Unmarshal([]byte(tokenJSON), &session); err != nil {
+			return nil, fmt.Errorf("invalid token JSON: %w", err)
+		}
+	}
+
+	// Validate required fields
+	if session.AccessToken == "" {
+		return nil, fmt.Errorf("token missing access_token")
+	}
+	if session.User.ID == "" {
+		return nil, fmt.Errorf("token missing user.id")
+	}
+	if session.User.Email == "" {
+		return nil, fmt.Errorf("token missing user.email")
+	}
+
+	// Check if token is expired
+	if session.ExpiresAt > 0 {
+		expiresAt := time.Unix(session.ExpiresAt, 0)
+		if time.Now().After(expiresAt) {
+			return nil, fmt.Errorf("token has expired")
+		}
+	}
+
+	// Save credentials
+	m.mu.Lock()
+	m.credentials = &Credentials{
+		Session:   session,
+		CreatedAt: time.Now().Unix(),
+	}
+	m.mu.Unlock()
+
+	if err := m.saveCredentials(); err != nil {
+		return nil, fmt.Errorf("failed to save credentials: %w", err)
+	}
+
+	return &session, nil
 }
 
 // Logout clears the current session.
